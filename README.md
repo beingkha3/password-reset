@@ -174,8 +174,7 @@ Copy that URL and open it in the browser to continue the flow.
 ## Testing with Postman
 
 A ready-to-use collection is published here:
-https://www.postman.com/beingkha3-2637696/password-reset/collection/k14bnuz/password-reset-api
-
+https://www.postman.com/beingkha3-2637696/password-reset/request/wrohuyx/password-reset?action=share&creator=54783568&active-environment=54783568-ba0d9c98-ac1e-46a2-854a-4354d4de72cc
 The workspace includes a **`password-reset (production)`** environment with `{{base_url}}` already pointed at the live backend. Select it from the environment dropdown in the top-right of Postman before running requests.
 
 Order to run:
