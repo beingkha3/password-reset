@@ -1,0 +1,58 @@
+{
+  "info": {
+    "name": "Password Reset API",
+    "_postman_id": "3efb89b6-7d0b-4f39-9d31-d1a17f8b5c13",
+    "description": "Collection for testing the password reset flow",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Forgot Password",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"john@example.com\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/auth/forgot-password",
+          "host": ["{{base_url}}"],
+          "path": ["api", "auth", "forgot-password"]
+        }
+      }
+    },
+    {
+      "name": "Verify Reset Token",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/auth/reset-password/{{reset_token}}",
+          "host": ["{{base_url}}"],
+          "path": ["api", "auth", "reset-password", "{{reset_token}}"]
+        }
+      }
+    },
+    {
+      "name": "Reset Password",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"password\": \"NewPass@123\",\n  \"confirmPassword\": \"NewPass@123\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/auth/reset-password/{{reset_token}}",
+          "host": ["{{base_url}}"],
+          "path": ["api", "auth", "reset-password", "{{reset_token}}"]
+        }
+      }
+    }
+  ]
+}

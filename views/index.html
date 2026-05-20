@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Password Reset API</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 860px; margin: 40px auto; padding: 0 20px; line-height: 1.6; }
+    h1 { color: #2563eb; }
+    code, pre { background: #f8fafc; border-radius: 6px; }
+    code { padding: 2px 6px; }
+    pre { padding: 16px; overflow: auto; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { text-align: left; padding: 10px; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
+    th { background: #f8fafc; }
+    .badge { display: inline-block; background: #dbeafe; color: #1d4ed8; padding: 2px 8px; border-radius: 999px; font-size: 0.8rem; }
+  </style>
+</head>
+<body>
+  <h1>Password Reset Flow</h1>
+  <p>A secure password reset workflow built with Node.js, Express, MongoDB, React, and Bootstrap.</p>
+
+  <h2>API Endpoints</h2>
+  <table>
+    <tr><th>Method</th><th>Endpoint</th><th>Description</th></tr>
+    <tr><td><span class="badge">POST</span></td><td><code>/api/auth/forgot-password</code></td><td>Generate and email a reset link</td></tr>
+    <tr><td><span class="badge">GET</span></td><td><code>/api/auth/reset-password/:token</code></td><td>Verify a reset token</td></tr>
+    <tr><td><span class="badge">POST</span></td><td><code>/api/auth/reset-password/:token</code></td><td>Set a new password</td></tr>
+  </table>
+
+  <h2>Frontend Routes</h2>
+  <table>
+    <tr><th>Route</th><th>Description</th></tr>
+    <tr><td><code>/forgot-password</code></td><td>Request a reset link</td></tr>
+    <tr><td><code>/reset-password/:token</code></td><td>Verify token and set a new password</td></tr>
+    <tr><td><code>/login</code></td><td>Login handoff screen after reset</td></tr>
+  </table>
+
+  <h2>Token Storage</h2>
+  <p>The raw reset token is emailed to the user. The database stores only a SHA-256 hash plus an expiry timestamp.</p>
+</body>
+</html>
