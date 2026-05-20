@@ -14,6 +14,7 @@ export default function ForgotPasswordPage() {
   const [info, setInfo] = useState('');
   const [loading, setLoading] = useState(false);
   const [emailTouched, setEmailTouched] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState('');
 
   const trimmedEmail = email.trim();
   const emailIsValid = isValidEmail(trimmedEmail);
@@ -27,6 +28,7 @@ export default function ForgotPasswordPage() {
     try {
       const response = await requestForgotPassword(targetEmail.trim());
       setSubmittedEmail(targetEmail.trim());
+      setPreviewUrl(response.previewUrl || '');
       setScreen('sent');
       setInfo(response.message || 'Reset link sent. Please check your email.');
     } catch (err) {
@@ -79,7 +81,18 @@ export default function ForgotPasswordPage() {
           </p>
           <StatusAlert variant="success" message={info} />
           <div className="action-stack">
-            <Link to="/login" className="btn btn-dark w-100">
+            {previewUrl && (
+              <a
+                href={previewUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn btn-dark w-100"
+              >
+                <i className="bi bi-envelope-open me-2" />
+                View email
+              </a>
+            )}
+            <Link to="/login" className="btn btn-outline-secondary w-100">
               Back to sign in
             </Link>
             <button type="button" className="btn btn-outline-secondary w-100" onClick={handleResend} disabled={loading}>

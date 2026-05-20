@@ -1,12 +1,26 @@
 const nodemailer = require('nodemailer');
 
-const createTransporter = () => {
+const createTransporter = async () => {
   if (process.env.EMAIL_TRANSPORT === 'console') {
-    return nodemailer.createTransport({
-      streamTransport: true,
-      buffer: true,
-      newline: 'unix',
+    return {
+      transporter: nodemailer.createTransport({
+        streamTransport: true,
+        buffer: true,
+        newline: 'unix',
+      }),
+      isEthereal: false,
+    };
+  }
+
+  if (process.env.EMAIL_TRANSPORT === 'ethereal') {
+    const testAccount = await nodemailer.createTestAccount();
+    const transporter = nodemailer.createTransport({
+      host: 'smtp.ethereal.email',
+      port: 587,
+      secure: false,
+      auth: { user: testAccount.user, pass: testAccount.pass },
     });
+    return { transporter, isEthereal: true };
   }
 
   const host = process.env.SMTP_HOST;
@@ -20,15 +34,18 @@ const createTransporter = () => {
     );
   }
 
-  return nodemailer.createTransport({
-    host,
-    port,
-    secure: process.env.SMTP_SECURE === 'true',
-    auth: { user, pass },
-    connectionTimeout: 10000,
-    socketTimeout: 10000,
-    greetingTimeout: 10000,
-  });
+  return {
+    transporter: nodemailer.createTransport({
+      host,
+      port,
+      secure: process.env.SMTP_SECURE === 'true',
+      auth: { user, pass },
+      connectionTimeout: 10000,
+      socketTimeout: 10000,
+      greetingTimeout: 10000,
+    }),
+    isEthereal: false,
+  };
 };
 
 const buildPasswordResetHtml = ({ name, resetUrl, expiryMinutes }) => `
@@ -44,7 +61,8 @@ const buildPasswordResetHtml = ({ name, resetUrl, expiryMinutes }) => `
 `;
 
 const sendPasswordResetEmail = async ({ to, name, resetUrl, expiryMinutes }) => {
-  const transporter = createTransporter();
+  const { transporter, isEthereal } = await createTransporter();
+
   const info = await transporter.sendMail({
     from: process.env.SMTP_FROM || 'no-reply@example.com',
     to,
@@ -56,7 +74,13 @@ const sendPasswordResetEmail = async ({ to, name, resetUrl, expiryMinutes }) => 
     console.log(`Password reset email prepared for ${to}: ${resetUrl}`);
   }
 
-  return info;
+  if (isEthereal) {
+    const previewUrl = nodemailer.getTestMessageUrl(info);
+    console.log(`Ethereal preview: ${previewUrl}`);
+    return { previewUrl };
+  }
+
+  return {};
 };
 
 module.exports = { sendPasswordResetEmail };
