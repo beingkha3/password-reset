@@ -25,6 +25,9 @@ const createTransporter = () => {
     port,
     secure: process.env.SMTP_SECURE === 'true',
     auth: { user, pass },
+    connectionTimeout: 10000,
+    socketTimeout: 10000,
+    greetingTimeout: 10000,
   });
 };
 
