@@ -80,7 +80,8 @@ password-reset/
 ├── middleware/
 │   ├── errorHandler.js         # Global error handler
 │   └── validate.js             # express-validator rules
-├── postman_collection.json     # Ready-to-import Postman collection
+├── password-reset.postman_collection.json   # Ready-to-import Postman collection
+├── password-reset.postman_environment.json # Postman environment (production base_url)
 └── client/                     # React frontend
     ├── package.json
     ├── index.html
@@ -139,7 +140,7 @@ npm install
 cp .env.example .env
 ```
 
-Open `.env` and fill in your MongoDB connection string. For local development, leave `EMAIL_TRANSPORT=console` — this makes the reset link print to your terminal instead of sending a real email.
+Open `.env` and fill in your MongoDB connection string. For local development, `EMAIL_TRANSPORT=ethereal` (the default) skips SMTP entirely — after submitting your email on the Forgot Password page, an **"Open reset link"** button appears directly in the UI. Alternatively, set `EMAIL_TRANSPORT=console` to print the reset URL to your terminal instead.
 
 ```bash
 npm start
@@ -161,7 +162,9 @@ The frontend runs on `http://localhost:5173`.
 
 ### 4. Testing the flow locally
 
-With `EMAIL_TRANSPORT=console`, after you submit your email on the Forgot Password page, check your terminal — you will see a line like:
+With `EMAIL_TRANSPORT=ethereal` (default), after you submit your email on the Forgot Password page an **"Open reset link"** button appears — click it to go straight to the reset form. No email, no terminal copy-paste needed.
+
+If you prefer `EMAIL_TRANSPORT=console`, the reset URL is printed to the backend terminal instead:
 
 ```
 Password reset email prepared for you@example.com: http://localhost:5173/reset-password/<token>
@@ -173,17 +176,20 @@ Copy that URL and open it in the browser to continue the flow.
 
 ## Testing with Postman
 
-A ready-to-use collection is published here:
-https://www.postman.com/beingkha3-2637696/password-reset/request/wrohuyx/password-reset?action=share&creator=54783568&active-environment=54783568-ba0d9c98-ac1e-46a2-854a-4354d4de72cc
+A ready-to-use collection is published here:  
+https://www.postman.com/beingkha3-2637696/password-reset/collection/z2gaak9/password-reset?action=share&creator=54783568&active-environment=54783568-ba0d9c98-ac1e-46a2-854a-4354d4de72cc
+
+The collection file is also committed to this repo as `password-reset.postman_collection.json` (with `password-reset.postman_environment.json`).
 The workspace includes a **`password-reset (production)`** environment with `{{base_url}}` already pointed at the live backend. Select it from the environment dropdown in the top-right of Postman before running requests.
 
-Order to run:
-1. **Register** — creates a test account
-2. **Forgot Password** — triggers the reset email
-3. Copy the token from the email (or server log if running locally)
-4. Set `{{reset_token}}` in the environment to that value
-5. **Verify Reset Token** — confirms the link is valid
-6. **Reset Password** — sets the new password
+**Run requests in this order:**
+
+1. **Register** — creates a test account (safe to re-run; returns 409 if already registered)
+2. **Forgot Password** — triggers the reset link; the test script automatically extracts the token from `previewUrl` and stores it as `{{resetToken}}`
+3. **Forgot Password - Unknown Email (404)** — confirms unregistered emails return 404 (optional)
+4. **Verify Reset Token** — confirms the token is valid
+5. **Reset Password** — submits the new password; token is invalidated server-side
+6. **Reset Password - Reuse Token (400)** — confirms the same token cannot be used again
 
 ---
 
