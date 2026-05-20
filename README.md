@@ -1,4 +1,4 @@
-# Password Reset — MERN Stack Project
+# Password Reset
 
 This is a project I built while learning MERN stack development. It implements a complete "Forgot Password" flow — the kind you see on almost every real website, where a user can request a password reset link by email and then securely set a new password.
 
