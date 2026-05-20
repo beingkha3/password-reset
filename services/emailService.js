@@ -13,12 +13,23 @@ const createTransporter = async () => {
   }
 
   if (process.env.EMAIL_TRANSPORT === 'ethereal') {
-    const testAccount = await nodemailer.createTestAccount();
+    // Use pre-generated static credentials if available (avoids a slow network call
+    // to api.nodemailer.com on every request, which can hang on some hosting providers).
+    // Fall back to dynamic account creation only when credentials are not set.
+    let user = process.env.ETHEREAL_USER;
+    let pass = process.env.ETHEREAL_PASS;
+
+    if (!user || !pass) {
+      const testAccount = await nodemailer.createTestAccount();
+      user = testAccount.user;
+      pass = testAccount.pass;
+    }
+
     const transporter = nodemailer.createTransport({
       host: 'smtp.ethereal.email',
       port: 587,
       secure: false,
-      auth: { user: testAccount.user, pass: testAccount.pass },
+      auth: { user, pass },
     });
     return { transporter, isEthereal: true };
   }
