@@ -1,64 +1,5 @@
 const nodemailer = require('nodemailer');
 
-const createTransporter = async () => {
-  if (process.env.EMAIL_TRANSPORT === 'console') {
-    return {
-      transporter: nodemailer.createTransport({
-        streamTransport: true,
-        buffer: true,
-        newline: 'unix',
-      }),
-      isEthereal: false,
-    };
-  }
-
-  if (process.env.EMAIL_TRANSPORT === 'ethereal') {
-    // Use pre-generated static credentials if available (avoids a slow network call
-    // to api.nodemailer.com on every request, which can hang on some hosting providers).
-    // Fall back to dynamic account creation only when credentials are not set.
-    let user = process.env.ETHEREAL_USER;
-    let pass = process.env.ETHEREAL_PASS;
-
-    if (!user || !pass) {
-      const testAccount = await nodemailer.createTestAccount();
-      user = testAccount.user;
-      pass = testAccount.pass;
-    }
-
-    const transporter = nodemailer.createTransport({
-      host: 'smtp.ethereal.email',
-      port: 587,
-      secure: false,
-      auth: { user, pass },
-    });
-    return { transporter, isEthereal: true };
-  }
-
-  const host = process.env.SMTP_HOST;
-  const port = Number(process.env.SMTP_PORT);
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
-
-  if (!host || !port || !user || !pass) {
-    throw new Error(
-      'Email transport is not configured. Set EMAIL_TRANSPORT=console for local development or provide SMTP credentials.'
-    );
-  }
-
-  return {
-    transporter: nodemailer.createTransport({
-      host,
-      port,
-      secure: process.env.SMTP_SECURE === 'true',
-      auth: { user, pass },
-      connectionTimeout: 10000,
-      socketTimeout: 10000,
-      greetingTimeout: 10000,
-    }),
-    isEthereal: false,
-  };
-};
-
 const buildPasswordResetHtml = ({ name, resetUrl, expiryMinutes }) => `
   <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #1f2937;">
     <h2 style="color: #2563eb;">Password reset request</h2>
@@ -72,24 +13,61 @@ const buildPasswordResetHtml = ({ name, resetUrl, expiryMinutes }) => `
 `;
 
 const sendPasswordResetEmail = async ({ to, name, resetUrl, expiryMinutes }) => {
-  const { transporter, isEthereal } = await createTransporter();
+  const transport = process.env.EMAIL_TRANSPORT;
 
-  const info = await transporter.sendMail({
+  // Demo / Ethereal mode — skip SMTP entirely.
+  // Return the reset URL directly so the frontend can surface it as a clickable link.
+  // Render and similar hosts block outbound SMTP; this avoids that dependency completely.
+  if (transport === 'ethereal') {
+    console.log(`[ethereal] Password reset link for ${to}: ${resetUrl}`);
+    return { previewUrl: resetUrl };
+  }
+
+  // Console mode — log and return; no delivery attempted.
+  if (transport === 'console') {
+    const transporter = nodemailer.createTransport({
+      streamTransport: true,
+      buffer: true,
+      newline: 'unix',
+    });
+    await transporter.sendMail({
+      from: process.env.SMTP_FROM || 'no-reply@example.com',
+      to,
+      subject: 'Reset your password',
+      html: buildPasswordResetHtml({ name, resetUrl, expiryMinutes }),
+    });
+    console.log(`[console] Password reset link for ${to}: ${resetUrl}`);
+    return {};
+  }
+
+  // SMTP mode — real delivery.
+  const host = process.env.SMTP_HOST;
+  const port = Number(process.env.SMTP_PORT);
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASS;
+
+  if (!host || !port || !user || !pass) {
+    throw new Error(
+      'Email transport is not configured. Set EMAIL_TRANSPORT=ethereal for development or provide SMTP credentials.'
+    );
+  }
+
+  const transporter = nodemailer.createTransport({
+    host,
+    port,
+    secure: process.env.SMTP_SECURE === 'true',
+    auth: { user, pass },
+    connectionTimeout: 10000,
+    socketTimeout: 10000,
+    greetingTimeout: 10000,
+  });
+
+  await transporter.sendMail({
     from: process.env.SMTP_FROM || 'no-reply@example.com',
     to,
     subject: 'Reset your password',
     html: buildPasswordResetHtml({ name, resetUrl, expiryMinutes }),
   });
-
-  if (process.env.EMAIL_TRANSPORT === 'console') {
-    console.log(`Password reset email prepared for ${to}: ${resetUrl}`);
-  }
-
-  if (isEthereal) {
-    const previewUrl = nodemailer.getTestMessageUrl(info);
-    console.log(`Ethereal preview: ${previewUrl}`);
-    return { previewUrl };
-  }
 
   return {};
 };

@@ -88,8 +88,8 @@ export default function ForgotPasswordPage() {
                 rel="noopener noreferrer"
                 className="btn btn-dark w-100"
               >
-                <i className="bi bi-envelope-open me-2" />
-                View email
+                <i className="bi bi-box-arrow-up-right me-2" />
+                Open reset link
               </a>
             )}
             <Link to="/login" className="btn btn-outline-secondary w-100">
