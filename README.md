@@ -1,8 +1,12 @@
-# Password Reset
+# Password Reset — MERN Stack Project
 
 This is a project I built while learning MERN stack development. It implements a complete "Forgot Password" flow — the kind you see on almost every real website, where a user can request a password reset link by email and then securely set a new password.
 
 I learned a lot building this. It covers backend security concepts I had never touched before, like hashing tokens, expiring links, and making sure a reset link can only be used once.
+
+**Live demo:**
+- Frontend: https://password-reset-iuuq.onrender.com
+- Backend API: https://password-reset-xlp6.onrender.com
 
 ---
 
@@ -29,6 +33,7 @@ The full flow works like this:
 - Rate limiting with `express-rate-limit` to prevent someone from spamming the forgot-password endpoint
 - Connecting React frontend to an Express backend with environment variables
 - Deploying a full-stack app — separate services for backend (Render Web Service) and frontend (Render Static Site)
+- Configuring `trust proxy` on Express so rate limiting works correctly behind Render's proxy layer
 
 ---
 
@@ -36,7 +41,7 @@ The full flow works like this:
 
 **Backend**
 - Node.js + Express
-- MongoDB + Mongoose
+- MongoDB Atlas + Mongoose
 - bcryptjs (password hashing)
 - nodemailer (emails)
 - express-validator (input validation)
@@ -46,6 +51,10 @@ The full flow works like this:
 - React + Vite
 - React Router
 - Bootstrap 5 + Bootstrap Icons (installed via npm, not CDN)
+
+**Deployed on**
+- Render (backend as Web Service, frontend as Static Site)
+- MongoDB Atlas (database)
 
 ---
 
@@ -140,6 +149,8 @@ The API runs on `http://localhost:5000`.
 
 ### 3. Set up the frontend
 
+Open a second terminal:
+
 ```bash
 cd client
 npm install
@@ -148,17 +159,32 @@ npm run dev
 
 The frontend runs on `http://localhost:5173`.
 
-### 4. Testing the flow
+### 4. Testing the flow locally
 
-The easiest way is to use the included Postman collection:
+With `EMAIL_TRANSPORT=console`, after you submit your email on the Forgot Password page, check your terminal — you will see a line like:
 
-1. Import `postman_collection.json` into Postman
-2. Set `{{base_url}}` to `http://localhost:5000`
-3. Run **Register** to create a test user
-4. Run **Forgot Password** with that email — copy the reset link from the server terminal
-5. Paste the token from the link into `{{reset_token}}`
-6. Run **Verify Reset Token** to confirm it works
-7. Run **Reset Password** to set a new password
+```
+Password reset email prepared for you@example.com: http://localhost:5173/reset-password/<token>
+```
+
+Copy that URL and open it in the browser to continue the flow.
+
+---
+
+## Testing with Postman
+
+A ready-to-use collection is published here:
+https://www.postman.com/beingkha3-2637696/password-reset/collection/k14bnuz/password-reset-api
+
+The workspace includes a **`password-reset (production)`** environment with `{{base_url}}` already pointed at the live backend. Select it from the environment dropdown in the top-right of Postman before running requests.
+
+Order to run:
+1. **Register** — creates a test account
+2. **Forgot Password** — triggers the reset email
+3. Copy the token from the email (or server log if running locally)
+4. Set `{{reset_token}}` in the environment to that value
+5. **Verify Reset Token** — confirms the link is valid
+6. **Reset Password** — sets the new password
 
 ---
 
@@ -184,46 +210,51 @@ I tried to follow real-world security practices here, not just make it work:
 - After a successful reset, the token is **deleted immediately** so the same link cannot be used twice.
 - The forgot-password endpoint is **rate limited** to stop someone from flooding it.
 - Passwords are hashed with **bcryptjs at cost factor 12** before saving.
+- Express `trust proxy` is enabled so rate limiting works correctly behind Render's reverse proxy.
 
 ---
 
 ## Deploying to Render
 
-This project is set up to deploy as two separate services on [Render](https://render.com).
+This project is deployed as two separate services on [Render](https://render.com).
 
 ### Backend — Web Service
 
 | Setting | Value |
 |---------|-------|
-| Root Directory | `password-reset` |
+| Root Directory | *(leave blank — repo root is the backend)* |
 | Build Command | `npm install` |
 | Start Command | `npm start` |
 
-Environment variables to add in the Render dashboard:
+Environment variables to set in the Render dashboard:
 
 ```
 MONGO_URI=your_mongodb_atlas_connection_string
-CLIENT_ORIGIN=https://your-frontend.onrender.com
+FRONTEND_URL=https://your-frontend.onrender.com
 EMAIL_TRANSPORT=smtp
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_SECURE=false
-SMTP_USER=your_email@gmail.com
-SMTP_PASS=your_app_password
+SMTP_HOST=your_smtp_host
+SMTP_PORT=465
+SMTP_SECURE=true
+SMTP_USER=your_email@yourdomain.com
+SMTP_PASS=your_email_password
+SMTP_FROM=Password Reset <your_email@yourdomain.com>
+RESET_TOKEN_EXPIRY_MINUTES=15
 ```
+
+> Port 465 requires `SMTP_SECURE=true`. Port 587 requires `SMTP_SECURE=false`.
 
 ### Frontend — Static Site
 
 | Setting | Value |
 |---------|-------|
-| Root Directory | `password-reset/client` |
+| Root Directory | `client` |
 | Build Command | `npm install && npm run build` |
 | Publish Directory | `dist` |
 
-Environment variable to add (must be set **before** the build runs):
+Environment variable to set (must be added **before** the build runs, not after):
 
 ```
 VITE_API_URL=https://your-backend.onrender.com/api
 ```
 
-> **Note:** In MongoDB Atlas, go to Network Access and add `0.0.0.0/0` to allow connections from Render's servers (Render uses dynamic IPs).
+> In MongoDB Atlas, go to **Network Access** and add `0.0.0.0/0` to allow connections from Render's dynamic IPs.
