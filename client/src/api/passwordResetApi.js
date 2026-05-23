@@ -18,6 +18,9 @@ const requestJson = async (path, options = {}) => {
   return data;
 };
 
+export const registerUser = (name, email, password) =>
+  requestJson('/auth/register', { method: 'POST', body: JSON.stringify({ name, email, password }) });
+
 export const requestForgotPassword = (email) =>
   requestJson('/auth/forgot-password', {
     method: 'POST',

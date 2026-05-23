@@ -21,6 +21,9 @@ export default function LoginPage() {
           </Link>
         </div>
       </section>
+      <div className="form-footer">
+        <Link to="/register">Don't have an account? Register</Link>
+      </div>
     </AuthFrame>
   );
 }

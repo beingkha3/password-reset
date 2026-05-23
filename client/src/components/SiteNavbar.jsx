@@ -1,4 +1,4 @@
-import { Link, NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 
 export default function SiteNavbar() {
   const { pathname } = useLocation();
@@ -7,23 +7,35 @@ export default function SiteNavbar() {
   return (
     <nav className="navbar-custom">
       <div className="header-container">
-        <Link className="navbar-brand-custom" to="/forgot-password">
+        <NavLink
+          className={({ isActive }) => `navbar-brand-custom${isActive ? ' active' : ''}`}
+          to="/register"
+        >
           <span className="brand-icon">
             <i className="bi bi-shield-lock-fill"></i>
           </span>
           <span>SecureReset</span>
-        </Link>
-        
+        </NavLink>
+
         <div className="nav-links">
+          <NavLink
+            to="/register"
+            className={({ isActive }) => `nav-btn ${isActive ? 'nav-btn-primary' : 'nav-btn-ghost'}`}
+          >
+            Register
+          </NavLink>
           <NavLink
             to="/login"
             className={({ isActive }) => `nav-btn ${isActive ? 'nav-btn-primary' : 'nav-btn-ghost'}`}
           >
             Sign In
           </NavLink>
-          <Link to="/forgot-password" className={`nav-btn ${resetIsActive ? 'nav-btn-primary' : 'nav-btn-ghost'}`}>
+          <NavLink
+            to="/forgot-password"
+            className={`nav-btn ${resetIsActive ? 'nav-btn-primary' : 'nav-btn-ghost'}`}
+          >
             Reset
-          </Link>
+          </NavLink>
         </div>
       </div>
     </nav>
