@@ -28,7 +28,7 @@ The full flow works like this:
 - How to use `crypto.randomBytes` to generate a secure random token
 - Why you should store a **hash** of the token in the database, not the token itself (same idea as hashing passwords)
 - How token expiry works — storing an expiry timestamp and comparing it on each request
-- Setting up nodemailer to send real SMTP emails from a domain mailbox
+- Setting up email delivery via the Brevo HTTP API (transactional email over HTTPS — required because Render blocks all outbound SMTP connections)
 - Writing Express middleware for input validation using `express-validator`
 - Rate limiting with `express-rate-limit` to prevent someone from spamming the forgot-password endpoint
 - Connecting React frontend to an Express backend with environment variables
@@ -43,7 +43,7 @@ The full flow works like this:
 - Node.js + Express
 - MongoDB Atlas + Mongoose
 - bcryptjs (password hashing)
-- nodemailer (emails)
+- Brevo HTTP API (transactional email)
 - express-validator (input validation)
 - express-rate-limit (brute-force protection)
 
@@ -74,7 +74,7 @@ password-reset/
 ├── routes/
 │   └── authRoutes.js           # API routes with rate limiting
 ├── services/
-│   └── emailService.js         # Nodemailer SMTP setup
+│   └── emailService.js         # Brevo HTTP API email delivery
 ├── utils/
 │   └── resetToken.js           # Token generation and SHA-256 hashing
 ├── middleware/
@@ -111,6 +111,7 @@ password-reset/
 | POST | `/api/auth/forgot-password` | Send a reset link (rate limited to 5 requests per 15 min) |
 | GET | `/api/auth/reset-password/:token` | Check if a token is valid and not expired |
 | POST | `/api/auth/reset-password/:token` | Save the new password, delete the token |
+| GET | `/api/health/smtp` | Check Brevo API connectivity (diagnostic) |
 
 ---
 
@@ -140,7 +141,7 @@ npm install
 cp .env.example .env
 ```
 
-Open `.env` and fill in your MongoDB connection string and your SMTP mailbox settings.
+Open `.env` and fill in your MongoDB connection string and your Brevo API key.
 
 ```bash
 npm start
@@ -173,20 +174,22 @@ The frontend runs on `http://localhost:5173`.
 ## Testing with Postman
 
 A ready-to-use collection is published here:  
-https://www.postman.com/beingkha3-2637696/password-reset/collection/z2gaak9/password-reset?action=share&creator=54783568&active-environment=54783568-ba0d9c98-ac1e-46a2-854a-4354d4de72cc
+https://www.postman.com/beingkha3-2637696/password-reset/collection/jqa4ou0/password-reset?action=share&creator=54783568&active-environment=54783568-ed5f58d4-c337-46ec-8512-2772125f6b8f
 
 The collection file is also committed to this repo as `password-reset.postman_collection.json` (with `password-reset.postman_environment.json`).
 The workspace includes a **`password-reset (production)`** environment with `{{base_url}}` already pointed at the live backend. Set `test_email` in that environment to an inbox you can access, then select it from the environment dropdown in the top-right of Postman before running requests.
 
 **Run requests in this order:**
 
-1. **Register** — creates a test account (safe to re-run; returns 409 if already registered)
-2. **Forgot Password** — triggers the reset link email
-3. **Forgot Password - Unknown Email (404)** — confirms unregistered emails return 404 (optional)
-4. Copy the token from the reset email link into the collection variable `resetToken`
-5. **Verify Reset Token** — confirms the token is valid
-6. **Reset Password** — submits the new password; token is invalidated server-side
-7. **Reset Password - Reuse Token (400)** — confirms the same token cannot be used again
+1. **API Health** — confirms the server is up
+2. **Email Health (Brevo)** — confirms Brevo API is reachable before triggering any email
+3. **Register** — creates a test account (safe to re-run; returns 409 if already registered)
+4. **Forgot Password** — triggers the reset link email
+5. **Forgot Password - Unknown Email (404)** — confirms unregistered emails return 404 (optional)
+6. Copy the token from the reset email link into the collection variable `resetToken`
+7. **Verify Reset Token** — confirms the token is valid
+8. **Reset Password** — submits the new password; token is invalidated server-side
+9. **Reset Password - Reuse Token (400)** — confirms the same token cannot be used again
 
 ---
 
@@ -232,17 +235,13 @@ Environment variables to set in the Render dashboard:
 
 ```
 MONGO_URI=your_mongodb_atlas_connection_string
-FRONTEND_URL=https://your-frontend.onrender.com
-SMTP_HOST=your_smtp_host
-SMTP_PORT=465
-SMTP_SECURE=true
-SMTP_USER=your_email@yourdomain.com
-SMTP_PASS=your_email_password
-SMTP_FROM=Password Reset <your_email@yourdomain.com>
+CLIENT_ORIGIN=https://your-frontend.onrender.com
+BREVO_API_KEY=your_brevo_api_key
+SMTP_FROM=Password Reset <noreply@yourdomain.com>
 RESET_TOKEN_EXPIRY_MINUTES=15
 ```
 
-> Port 465 requires `SMTP_SECURE=true`. Port 587 requires `SMTP_SECURE=false`.
+> Email is sent via the [Brevo](https://app.brevo.com) HTTP API (HTTPS port 443). Render blocks all outbound SMTP connections (ports 465 and 587), so nodemailer/SMTP does not work on Render. Get your API key from Brevo → Account → SMTP & API → API Keys tab. Verify your sending domain under Senders & IPs → Domains.
 
 ### Frontend — Static Site
 
