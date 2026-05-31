@@ -1,58 +1,327 @@
 {
   "info": {
     "name": "Password Reset API",
-    "_postman_id": "3efb89b6-7d0b-4f39-9d31-d1a17f8b5c13",
-    "description": "Collection for testing the password reset flow",
-    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    "description": "Legacy alias of the main password reset collection. Set `test_email` in the selected Postman environment to an inbox you can access, then run requests in order: 1 -> 2. Copy the token from the email's reset link into the `resetToken` collection variable before running steps 3-5.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "3efb89b6-7d0b-4f39-9d31-d1a17f8b5c13"
   },
+  "variable": [
+    {
+      "key": "resetToken",
+      "value": ""
+    }
+  ],
   "item": [
     {
-      "name": "Forgot Password",
+      "name": "1. Register",
       "request": {
         "method": "POST",
         "header": [
-          { "key": "Content-Type", "value": "application/json" }
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"email\": \"john@example.com\"\n}"
+          "raw": "{\n  \"name\": \"{{test_name}}\",\n  \"email\": \"{{test_email}}\",\n  \"password\": \"{{initial_password}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/auth/register",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "auth",
+            "register"
+          ]
+        },
+        "description": "Create a new account with the environment's `test_email`. Returns 409 if the email is already registered, which is safe for repeated runs."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const data = pm.response.json();",
+              "if (pm.response.code === 201) {",
+              "  pm.test('Account created', () => pm.expect(data.success).to.be.true);",
+              "} else if (pm.response.code === 409) {",
+              "  pm.test('Already registered - ok to re-run', () => pm.expect(data.success).to.be.false);",
+              "} else {",
+              "  pm.test('Unexpected status ' + pm.response.code, () => { throw new Error(JSON.stringify(data)); });",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Forgot Password",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{test_email}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
         },
         "url": {
           "raw": "{{base_url}}/api/auth/forgot-password",
-          "host": ["{{base_url}}"],
-          "path": ["api", "auth", "forgot-password"]
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "auth",
+            "forgot-password"
+          ]
+        },
+        "description": "Sends a real reset email to `{{test_email}}`. Copy the token from the email's reset link into the `resetToken` collection variable before running steps 3-5."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const data = pm.response.json();",
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "pm.test('success true', () => pm.expect(data.success).to.be.true);",
+              "pm.test('Reset email accepted for delivery', () => pm.expect(data.message).to.include('email'));"
+            ]
+          }
         }
-      }
+      ]
     },
     {
-      "name": "Verify Reset Token",
+      "name": "2b. Forgot Password - Unknown Email (404)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{unknown_email}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/auth/forgot-password",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "auth",
+            "forgot-password"
+          ]
+        },
+        "description": "Confirms 404 is returned for an unregistered email address."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const data = pm.response.json();",
+              "pm.test('Status 404', () => pm.response.to.have.status(404));",
+              "pm.test('success false', () => pm.expect(data.success).to.be.false);",
+              "pm.test('Error message', () => pm.expect(data.message).to.include('No account found'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Verify Reset Token",
       "request": {
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "{{base_url}}/api/auth/reset-password/{{reset_token}}",
-          "host": ["{{base_url}}"],
-          "path": ["api", "auth", "reset-password", "{{reset_token}}"]
+          "raw": "{{base_url}}/api/auth/reset-password/{{resetToken}}",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "auth",
+            "reset-password",
+            "{{resetToken}}"
+          ]
+        },
+        "description": "Checks the token is valid. 200 = valid, 400 = invalid or already used, 410 = expired. Requires `resetToken` from the email link."
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const token = pm.collectionVariables.get('resetToken');",
+              "if (!token) {",
+              "  throw new Error('{{resetToken}} is empty - copy the token from the reset email link first.');",
+              "}"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const data = pm.response.json();",
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "pm.test('success true', () => pm.expect(data.success).to.be.true);",
+              "pm.test('Token valid', () => pm.expect(data.message).to.include('valid'));"
+            ]
+          }
         }
-      }
+      ]
     },
     {
-      "name": "Reset Password",
+      "name": "4. Reset Password",
       "request": {
         "method": "POST",
         "header": [
-          { "key": "Content-Type", "value": "application/json" }
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"password\": \"NewPass@123\",\n  \"confirmPassword\": \"NewPass@123\"\n}"
+          "raw": "{\n  \"password\": \"{{new_password}}\",\n  \"confirmPassword\": \"{{new_password}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
         },
         "url": {
-          "raw": "{{base_url}}/api/auth/reset-password/{{reset_token}}",
-          "host": ["{{base_url}}"],
-          "path": ["api", "auth", "reset-password", "{{reset_token}}"]
+          "raw": "{{base_url}}/api/auth/reset-password/{{resetToken}}",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "auth",
+            "reset-password",
+            "{{resetToken}}"
+          ]
+        },
+        "description": "Submits the new password from `new_password`. The token is invalidated after this call."
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const token = pm.collectionVariables.get('resetToken');",
+              "if (!token) {",
+              "  throw new Error('{{resetToken}} is empty - copy the token from the reset email link first.');",
+              "}"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const data = pm.response.json();",
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "pm.test('success true', () => pm.expect(data.success).to.be.true);",
+              "pm.test('Reset successful', () => pm.expect(data.message).to.include('reset successfully'));"
+            ]
+          }
         }
-      }
+      ]
+    },
+    {
+      "name": "5. Reset Password - Reuse Token (400)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"password\": \"{{reuse_password}}\",\n  \"confirmPassword\": \"{{reuse_password}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/auth/reset-password/{{resetToken}}",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "auth",
+            "reset-password",
+            "{{resetToken}}"
+          ]
+        },
+        "description": "Run immediately after step 4. Confirms the token is single-use and should return 400."
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const token = pm.collectionVariables.get('resetToken');",
+              "if (!token) {",
+              "  throw new Error('{{resetToken}} is empty - copy the token from the reset email link first, then run step 4.');",
+              "}"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const data = pm.response.json();",
+              "pm.test('Status 400', () => pm.response.to.have.status(400));",
+              "pm.test('success false', () => pm.expect(data.success).to.be.false);",
+              "pm.collectionVariables.set('resetToken', '');"
+            ]
+          }
+        }
+      ]
     }
   ]
 }

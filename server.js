@@ -41,11 +41,18 @@ app.use('/api/auth', authRoutes);
 app.use(errorHandler);
 
 connectDB()
-  .then(async () => {
-    await verifyEmailConfig();
+  .then(() => {
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
     });
+
+    verifyEmailConfig()
+      .then(() => {
+        console.log('SMTP configuration verified');
+      })
+      .catch((err) => {
+        console.error('SMTP verification failed:', err.message);
+      });
   })
   .catch((err) => {
     console.error('Failed to start server:', err.message);

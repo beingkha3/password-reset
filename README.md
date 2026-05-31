@@ -176,16 +176,17 @@ A ready-to-use collection is published here:
 https://www.postman.com/beingkha3-2637696/password-reset/collection/z2gaak9/password-reset?action=share&creator=54783568&active-environment=54783568-ba0d9c98-ac1e-46a2-854a-4354d4de72cc
 
 The collection file is also committed to this repo as `password-reset.postman_collection.json` (with `password-reset.postman_environment.json`).
-The workspace includes a **`password-reset (production)`** environment with `{{base_url}}` already pointed at the live backend. Select it from the environment dropdown in the top-right of Postman before running requests.
+The workspace includes a **`password-reset (production)`** environment with `{{base_url}}` already pointed at the live backend. Set `test_email` in that environment to an inbox you can access, then select it from the environment dropdown in the top-right of Postman before running requests.
 
 **Run requests in this order:**
 
 1. **Register** — creates a test account (safe to re-run; returns 409 if already registered)
 2. **Forgot Password** — triggers the reset link email
 3. **Forgot Password - Unknown Email (404)** — confirms unregistered emails return 404 (optional)
-4. **Verify Reset Token** — confirms the token is valid
-5. **Reset Password** — submits the new password; token is invalidated server-side
-6. **Reset Password - Reuse Token (400)** — confirms the same token cannot be used again
+4. Copy the token from the reset email link into the collection variable `resetToken`
+5. **Verify Reset Token** — confirms the token is valid
+6. **Reset Password** — submits the new password; token is invalidated server-side
+7. **Reset Password - Reuse Token (400)** — confirms the same token cannot be used again
 
 ---
 
