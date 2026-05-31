@@ -10,6 +10,7 @@ const cors = require('cors');
 const connectDB = require('./config/db');
 const authRoutes = require('./routes/authRoutes');
 const errorHandler = require('./middleware/errorHandler');
+const { smtpHealthCheck } = require('./services/emailService');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -33,6 +34,11 @@ app.get('/', (req, res) => {
       resetPassword: { method: 'POST', url: '/api/auth/reset-password/:token' },
     },
   });
+});
+
+app.get('/api/health/smtp', async (req, res) => {
+  const result = await smtpHealthCheck();
+  res.status(result.ok ? 200 : 503).json(result);
 });
 
 app.use('/api/auth', authRoutes);

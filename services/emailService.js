@@ -60,12 +60,48 @@ const getTransporter = () => {
 const sendPasswordResetEmail = async ({ to, name, resetUrl, expiryMinutes }) => {
   const smtpConfig = getSmtpConfig();
 
-  await getTransporter().sendMail({
-    from: smtpConfig.from,
-    to,
-    subject: 'Reset your password',
-    html: buildPasswordResetHtml({ name, resetUrl, expiryMinutes }),
-  });
+  try {
+    await getTransporter().sendMail({
+      from: smtpConfig.from,
+      to,
+      subject: 'Reset your password',
+      html: buildPasswordResetHtml({ name, resetUrl, expiryMinutes }),
+    });
+  } catch (err) {
+    transporter = null; // reset so next request gets a fresh connection
+    console.error('[emailService] sendMail failed:', {
+      code: err.code || null,
+      message: err.message,
+      host: smtpConfig.host,
+      port: smtpConfig.port,
+      secure: smtpConfig.secure,
+    });
+    throw err;
+  }
 };
 
-module.exports = { sendPasswordResetEmail };
+const smtpHealthCheck = async () => {
+  let smtpConfig;
+  try {
+    smtpConfig = getSmtpConfig();
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+
+  try {
+    await getTransporter().verify();
+    return { ok: true, host: smtpConfig.host, port: smtpConfig.port, secure: smtpConfig.secure };
+  } catch (err) {
+    transporter = null; // reset on verify failure
+    return {
+      ok: false,
+      host: smtpConfig.host,
+      port: smtpConfig.port,
+      secure: smtpConfig.secure,
+      code: err.code || null,
+      error: err.message,
+    };
+  }
+};
+
+module.exports = { sendPasswordResetEmail, smtpHealthCheck };
