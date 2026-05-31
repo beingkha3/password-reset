@@ -10,7 +10,6 @@ const cors = require('cors');
 const connectDB = require('./config/db');
 const authRoutes = require('./routes/authRoutes');
 const errorHandler = require('./middleware/errorHandler');
-const { verifyEmailConfig } = require('./services/emailService');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -45,14 +44,6 @@ connectDB()
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
     });
-
-    verifyEmailConfig()
-      .then(() => {
-        console.log('SMTP configuration verified');
-      })
-      .catch((err) => {
-        console.error('SMTP verification failed:', err.message);
-      });
   })
   .catch((err) => {
     console.error('Failed to start server:', err.message);

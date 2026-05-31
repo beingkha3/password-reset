@@ -140,7 +140,7 @@ npm install
 cp .env.example .env
 ```
 
-Open `.env` and fill in your MongoDB connection string and your SMTP mailbox settings. The server now validates the SMTP connection during startup, so it will fail fast if the mail configuration is incomplete or incorrect.
+Open `.env` and fill in your MongoDB connection string and your SMTP mailbox settings.
 
 ```bash
 npm start

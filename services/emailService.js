@@ -1,5 +1,7 @@
 const nodemailer = require('nodemailer');
 
+let transporter;
+
 const buildPasswordResetHtml = ({ name, resetUrl, expiryMinutes }) => `
   <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #1f2937;">
     <h2 style="color: #2563eb;">Password reset request</h2>
@@ -26,41 +28,35 @@ const getSmtpConfig = () => {
   }
 
   const secureSetting = process.env.SMTP_SECURE;
-  if (secureSetting !== 'true' && secureSetting !== 'false') {
-    throw new Error('SMTP_SECURE must be set to either true or false.');
-  }
+  const secure = secureSetting ? secureSetting === 'true' : port === 465;
 
   return {
     host,
     port,
-    secure: secureSetting === 'true',
+    secure,
     auth: { user, pass },
     from,
   };
 };
 
-const verifyEmailConfig = async () => {
-  const smtpConfig = getSmtpConfig();
-  const transporter = nodemailer.createTransport({
-    ...smtpConfig,
-    connectionTimeout: 10000,
-    socketTimeout: 10000,
-    greetingTimeout: 10000,
-  });
+const getTransporter = () => {
+  if (!transporter) {
+    const smtpConfig = getSmtpConfig();
+    transporter = nodemailer.createTransport({
+      host: smtpConfig.host,
+      port: smtpConfig.port,
+      secure: smtpConfig.secure,
+      auth: smtpConfig.auth,
+    });
+  }
 
-  await transporter.verify();
+  return transporter;
 };
 
 const sendPasswordResetEmail = async ({ to, name, resetUrl, expiryMinutes }) => {
   const smtpConfig = getSmtpConfig();
-  const transporter = nodemailer.createTransport({
-    ...smtpConfig,
-    connectionTimeout: 10000,
-    socketTimeout: 10000,
-    greetingTimeout: 10000,
-  });
 
-  await transporter.sendMail({
+  await getTransporter().sendMail({
     from: smtpConfig.from,
     to,
     subject: 'Reset your password',
@@ -68,4 +64,4 @@ const sendPasswordResetEmail = async ({ to, name, resetUrl, expiryMinutes }) => 
   });
 };
 
-module.exports = { sendPasswordResetEmail, verifyEmailConfig };
+module.exports = { sendPasswordResetEmail };
