@@ -1,3 +1,5 @@
+const firstName = (name) => (name ? name.trim().split(/\s+/)[0] : null);
+
 const buildPasswordResetHtml = ({ name, resetUrl, expiryMinutes }) => `
 <!DOCTYPE html>
 <html lang="en">
@@ -18,7 +20,7 @@ const buildPasswordResetHtml = ({ name, resetUrl, expiryMinutes }) => `
         <tr>
           <td style="background-color:#ffffff;padding:40px 40px 32px;">
             <h1 style="margin:0 0 8px;font-size:22px;font-weight:700;color:#111827;">Reset your password</h1>
-            <p style="margin:0 0 24px;font-size:14px;color:#6b7280;">Hello ${name || 'there'},</p>
+            <p style="margin:0 0 24px;font-size:14px;color:#6b7280;">Hello ${firstName(name) || 'there'},</p>
             <p style="margin:0 0 28px;font-size:15px;color:#374151;line-height:1.7;">
               We received a request to reset the password for your account. Click the button below to choose a new password.
             </p>
