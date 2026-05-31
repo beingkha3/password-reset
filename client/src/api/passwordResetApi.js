@@ -1,21 +1,40 @@
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const REQUEST_TIMEOUT_MS = 20000;
 
 const requestJson = async (path, options = {}) => {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...(options.headers || {}),
-    },
-    ...options,
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
-  const data = await response.json().catch(() => ({}));
+  try {
+    const response = await fetch(`${API_BASE_URL}${path}`, {
+      headers: {
+        'Content-Type': 'application/json',
+        ...(options.headers || {}),
+      },
+      ...options,
+      signal: controller.signal,
+    });
 
-  if (!response.ok) {
-    throw new Error(data.message || 'Request failed. Please try again.');
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      throw new Error(data.message || 'Request failed. Please try again.');
+    }
+
+    return data;
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      throw new Error('The request timed out. Please try again.', { cause: err });
+    }
+
+    if (err instanceof TypeError) {
+      throw new Error('Unable to reach the server. Please try again.', { cause: err });
+    }
+
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
   }
-
-  return data;
 };
 
 export const registerUser = (name, email, password) =>

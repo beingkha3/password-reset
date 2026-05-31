@@ -10,6 +10,7 @@ const buildPasswordResetHtml = ({ name, resetUrl, expiryMinutes }) => `
     <p><a href="${resetUrl}" style="display:inline-block;padding:12px 18px;background:#2563eb;color:#fff;text-decoration:none;border-radius:6px;">Reset Password</a></p>
     <p>Or copy this URL into your browser:</p>
     <p><code>${resetUrl}</code></p>
+    <p>If you request another reset email, only the most recent link will remain valid.</p>
     <p>This link expires in ${expiryMinutes} minutes. If you did not request this change, you can safely ignore this message.</p>
   </div>
 `;
@@ -47,6 +48,9 @@ const getTransporter = () => {
       port: smtpConfig.port,
       secure: smtpConfig.secure,
       auth: smtpConfig.auth,
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 15000,
     });
   }
 

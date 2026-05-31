@@ -43,8 +43,19 @@ export default function ResetPasswordPage() {
       } catch (err) {
         if (!mounted) return;
         const message = err.message || 'This reset link is invalid. Please request a new password reset link.';
+        const normalizedMessage = message.toLowerCase();
         setTokenMessage(message);
-        setTokenState(message.toLowerCase().includes('expired') ? 'expired' : 'invalid');
+        if (normalizedMessage.includes('expired')) {
+          setTokenState('expired');
+          return;
+        }
+
+        if (normalizedMessage.includes('invalid')) {
+          setTokenState('invalid');
+          return;
+        }
+
+        setTokenState('error');
       }
     };
 
@@ -143,6 +154,33 @@ export default function ResetPasswordPage() {
           <Link to="/forgot-password" className="btn btn-dark w-100">
             Send new reset link
           </Link>
+        </section>
+      </AuthFrame>
+    );
+  }
+
+  if (tokenState === 'error') {
+    return (
+      <AuthFrame
+        badge="Link check failed"
+        title="We could not verify this link"
+        subtitle="The reset token may still be valid, but the app could not reach the API to confirm it."
+        activeStep={2}
+      >
+        <section className="state-panel text-center">
+          <div className="state-icon warning">
+            <i className="bi bi-exclamation-triangle" />
+          </div>
+          <h2>Verification unavailable</h2>
+          <p>{tokenMessage || 'Unable to verify the reset link right now. Please try again shortly.'}</p>
+          <div className="action-stack">
+            <button type="button" className="btn btn-dark w-100" onClick={() => window.location.reload()}>
+              Try again
+            </button>
+            <Link to="/forgot-password" className="btn btn-outline-secondary w-100">
+              Request new reset link
+            </Link>
+          </div>
         </section>
       </AuthFrame>
     );

@@ -77,6 +77,7 @@ export default function ForgotPasswordPage() {
           <p>
             Please check <strong>{submittedEmail}</strong>. This link will expire in 15 minutes.
           </p>
+          <p className="text-secondary small mb-3">If you request another email, only the newest reset link will work.</p>
           <StatusAlert variant="success" message={info} />
           <div className="action-stack">
             <Link to="/login" className="btn btn-outline-secondary w-100">
