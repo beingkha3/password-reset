@@ -1,7 +1,3 @@
-const nodemailer = require('nodemailer');
-
-let transporter;
-
 const buildPasswordResetHtml = ({ name, resetUrl, expiryMinutes }) => `
   <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #1f2937;">
     <h2 style="color: #2563eb;">Password reset request</h2>
@@ -15,92 +11,68 @@ const buildPasswordResetHtml = ({ name, resetUrl, expiryMinutes }) => `
   </div>
 `;
 
-const getSmtpConfig = () => {
-  const host = process.env.SMTP_HOST;
-  const port = Number(process.env.SMTP_PORT);
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
-  const from = process.env.SMTP_FROM;
-
-  if (!host || !Number.isInteger(port) || port <= 0 || !user || !pass || !from) {
-    throw new Error(
-      'SMTP is not fully configured. Set SMTP_HOST, SMTP_PORT, SMTP_SECURE, SMTP_USER, SMTP_PASS, and SMTP_FROM.'
-    );
+const getSender = () => {
+  const from = process.env.SMTP_FROM || '';
+  const match = from.match(/^(.*?)\s*<(.+?)>$/);
+  if (match) {
+    return { name: match[1].trim() || 'Password Reset', email: match[2].trim() };
   }
-
-  const secureSetting = process.env.SMTP_SECURE;
-  const secure = secureSetting ? secureSetting === 'true' : port === 465;
-
-  return {
-    host,
-    port,
-    secure,
-    auth: { user, pass },
-    from,
-  };
+  return { name: 'Password Reset', email: from.trim() || 'noreply@kazrotech.com' };
 };
 
-const getTransporter = () => {
-  if (!transporter) {
-    const smtpConfig = getSmtpConfig();
-    transporter = nodemailer.createTransport({
-      host: smtpConfig.host,
-      port: smtpConfig.port,
-      secure: smtpConfig.secure,
-      auth: smtpConfig.auth,
-      connectionTimeout: 10000,
-      greetingTimeout: 10000,
-      socketTimeout: 15000,
-    });
-  }
+const brevoPost = async (path, payload) => {
+  const apiKey = process.env.BREVO_API_KEY;
+  if (!apiKey) throw new Error('BREVO_API_KEY is not configured');
 
-  return transporter;
+  return fetch(`https://api.brevo.com/v3${path}`, {
+    method: 'POST',
+    headers: {
+      accept: 'application/json',
+      'api-key': apiKey,
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+};
+
+const brevoGet = async (path) => {
+  const apiKey = process.env.BREVO_API_KEY;
+  if (!apiKey) throw new Error('BREVO_API_KEY is not configured');
+
+  return fetch(`https://api.brevo.com/v3${path}`, {
+    headers: { accept: 'application/json', 'api-key': apiKey },
+  });
 };
 
 const sendPasswordResetEmail = async ({ to, name, resetUrl, expiryMinutes }) => {
-  const smtpConfig = getSmtpConfig();
+  const res = await brevoPost('/smtp/email', {
+    sender: getSender(),
+    to: [{ email: to, name: name || to }],
+    subject: 'Reset your password',
+    htmlContent: buildPasswordResetHtml({ name, resetUrl, expiryMinutes }),
+  });
 
-  try {
-    await getTransporter().sendMail({
-      from: smtpConfig.from,
-      to,
-      subject: 'Reset your password',
-      html: buildPasswordResetHtml({ name, resetUrl, expiryMinutes }),
-    });
-  } catch (err) {
-    transporter = null; // reset so next request gets a fresh connection
-    console.error('[emailService] sendMail failed:', {
-      code: err.code || null,
-      message: err.message,
-      host: smtpConfig.host,
-      port: smtpConfig.port,
-      secure: smtpConfig.secure,
-    });
-    throw err;
+  if (!res.ok) {
+    const body = await res.text();
+    console.error('[emailService] Brevo send failed:', { status: res.status, body });
+    throw new Error(`Email delivery failed (Brevo ${res.status}): ${body}`);
   }
 };
 
 const smtpHealthCheck = async () => {
-  let smtpConfig;
-  try {
-    smtpConfig = getSmtpConfig();
-  } catch (err) {
-    return { ok: false, error: err.message };
-  }
+  const apiKey = process.env.BREVO_API_KEY;
+  if (!apiKey) return { ok: false, error: 'BREVO_API_KEY is not configured' };
 
   try {
-    await getTransporter().verify();
-    return { ok: true, host: smtpConfig.host, port: smtpConfig.port, secure: smtpConfig.secure };
+    const res = await brevoGet('/account');
+    if (res.ok) {
+      const data = await res.json();
+      return { ok: true, provider: 'brevo', account: data.email };
+    }
+    const body = await res.text();
+    return { ok: false, provider: 'brevo', status: res.status, error: body };
   } catch (err) {
-    transporter = null; // reset on verify failure
-    return {
-      ok: false,
-      host: smtpConfig.host,
-      port: smtpConfig.port,
-      secure: smtpConfig.secure,
-      code: err.code || null,
-      error: err.message,
-    };
+    return { ok: false, provider: 'brevo', error: err.message };
   }
 };
 
