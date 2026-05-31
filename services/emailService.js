@@ -12,64 +12,60 @@ const buildPasswordResetHtml = ({ name, resetUrl, expiryMinutes }) => `
   </div>
 `;
 
-const sendPasswordResetEmail = async ({ to, name, resetUrl, expiryMinutes }) => {
-  const transport = process.env.EMAIL_TRANSPORT;
-
-  // Demo / Ethereal mode — skip SMTP entirely.
-  // Return the reset URL directly so the frontend can surface it as a clickable link.
-  // Render and similar hosts block outbound SMTP; this avoids that dependency completely.
-  if (transport === 'ethereal') {
-    console.log(`[ethereal] Password reset link for ${to}: ${resetUrl}`);
-    return { previewUrl: resetUrl };
-  }
-
-  // Console mode — log and return; no delivery attempted.
-  if (transport === 'console') {
-    const transporter = nodemailer.createTransport({
-      streamTransport: true,
-      buffer: true,
-      newline: 'unix',
-    });
-    await transporter.sendMail({
-      from: process.env.SMTP_FROM || 'no-reply@example.com',
-      to,
-      subject: 'Reset your password',
-      html: buildPasswordResetHtml({ name, resetUrl, expiryMinutes }),
-    });
-    console.log(`[console] Password reset link for ${to}: ${resetUrl}`);
-    return {};
-  }
-
-  // SMTP mode — real delivery.
+const getSmtpConfig = () => {
   const host = process.env.SMTP_HOST;
   const port = Number(process.env.SMTP_PORT);
   const user = process.env.SMTP_USER;
   const pass = process.env.SMTP_PASS;
+  const from = process.env.SMTP_FROM;
 
-  if (!host || !port || !user || !pass) {
+  if (!host || !Number.isInteger(port) || port <= 0 || !user || !pass || !from) {
     throw new Error(
-      'Email transport is not configured. Set EMAIL_TRANSPORT=ethereal for development or provide SMTP credentials.'
+      'SMTP is not fully configured. Set SMTP_HOST, SMTP_PORT, SMTP_SECURE, SMTP_USER, SMTP_PASS, and SMTP_FROM.'
     );
   }
 
-  const transporter = nodemailer.createTransport({
+  const secureSetting = process.env.SMTP_SECURE;
+  if (secureSetting !== 'true' && secureSetting !== 'false') {
+    throw new Error('SMTP_SECURE must be set to either true or false.');
+  }
+
+  return {
     host,
     port,
-    secure: process.env.SMTP_SECURE === 'true',
+    secure: secureSetting === 'true',
     auth: { user, pass },
+    from,
+  };
+};
+
+const verifyEmailConfig = async () => {
+  const smtpConfig = getSmtpConfig();
+  const transporter = nodemailer.createTransport({
+    ...smtpConfig,
+    connectionTimeout: 10000,
+    socketTimeout: 10000,
+    greetingTimeout: 10000,
+  });
+
+  await transporter.verify();
+};
+
+const sendPasswordResetEmail = async ({ to, name, resetUrl, expiryMinutes }) => {
+  const smtpConfig = getSmtpConfig();
+  const transporter = nodemailer.createTransport({
+    ...smtpConfig,
     connectionTimeout: 10000,
     socketTimeout: 10000,
     greetingTimeout: 10000,
   });
 
   await transporter.sendMail({
-    from: process.env.SMTP_FROM || 'no-reply@example.com',
+    from: smtpConfig.from,
     to,
     subject: 'Reset your password',
     html: buildPasswordResetHtml({ name, resetUrl, expiryMinutes }),
   });
-
-  return {};
 };
 
-module.exports = { sendPasswordResetEmail };
+module.exports = { sendPasswordResetEmail, verifyEmailConfig };

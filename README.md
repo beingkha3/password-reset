@@ -28,7 +28,7 @@ The full flow works like this:
 - How to use `crypto.randomBytes` to generate a secure random token
 - Why you should store a **hash** of the token in the database, not the token itself (same idea as hashing passwords)
 - How token expiry works — storing an expiry timestamp and comparing it on each request
-- Setting up nodemailer to send emails (and using a `console` mode during development so I don't need real SMTP)
+- Setting up nodemailer to send real SMTP emails from a domain mailbox
 - Writing Express middleware for input validation using `express-validator`
 - Rate limiting with `express-rate-limit` to prevent someone from spamming the forgot-password endpoint
 - Connecting React frontend to an Express backend with environment variables
@@ -64,7 +64,7 @@ The full flow works like this:
 password-reset/
 ├── server.js                   # Main Express server
 ├── package.json
-├── .env.example                # Copy this to .env and fill in your values
+├── .env.example                # Copy this to .env and fill in your MongoDB + SMTP values
 ├── config/
 │   └── db.js                   # MongoDB connection
 ├── models/
@@ -74,7 +74,7 @@ password-reset/
 ├── routes/
 │   └── authRoutes.js           # API routes with rate limiting
 ├── services/
-│   └── emailService.js         # Nodemailer setup (console or SMTP)
+│   └── emailService.js         # Nodemailer SMTP setup
 ├── utils/
 │   └── resetToken.js           # Token generation and SHA-256 hashing
 ├── middleware/
@@ -140,7 +140,7 @@ npm install
 cp .env.example .env
 ```
 
-Open `.env` and fill in your MongoDB connection string. For local development, `EMAIL_TRANSPORT=ethereal` (the default) skips SMTP entirely — after submitting your email on the Forgot Password page, an **"Open reset link"** button appears directly in the UI. Alternatively, set `EMAIL_TRANSPORT=console` to print the reset URL to your terminal instead.
+Open `.env` and fill in your MongoDB connection string and your SMTP mailbox settings. The server now validates the SMTP connection during startup, so it will fail fast if the mail configuration is incomplete or incorrect.
 
 ```bash
 npm start
@@ -162,15 +162,11 @@ The frontend runs on `http://localhost:5173`.
 
 ### 4. Testing the flow locally
 
-With `EMAIL_TRANSPORT=ethereal` (default), after you submit your email on the Forgot Password page an **"Open reset link"** button appears — click it to go straight to the reset form. No email, no terminal copy-paste needed.
-
-If you prefer `EMAIL_TRANSPORT=console`, the reset URL is printed to the backend terminal instead:
-
-```
-Password reset email prepared for you@example.com: http://localhost:5173/reset-password/<token>
-```
-
-Copy that URL and open it in the browser to continue the flow.
+1. Start the backend and confirm it connects to MongoDB and starts without SMTP errors.
+2. Register a user with an email address you can access.
+3. Submit that email on `/forgot-password`.
+4. Open the password reset email delivered to your inbox.
+5. Click the reset link and complete the password update.
 
 ---
 
@@ -185,7 +181,7 @@ The workspace includes a **`password-reset (production)`** environment with `{{b
 **Run requests in this order:**
 
 1. **Register** — creates a test account (safe to re-run; returns 409 if already registered)
-2. **Forgot Password** — triggers the reset link; the test script automatically extracts the token from `previewUrl` and stores it as `{{resetToken}}`
+2. **Forgot Password** — triggers the reset link email
 3. **Forgot Password - Unknown Email (404)** — confirms unregistered emails return 404 (optional)
 4. **Verify Reset Token** — confirms the token is valid
 5. **Reset Password** — submits the new password; token is invalidated server-side
@@ -236,7 +232,6 @@ Environment variables to set in the Render dashboard:
 ```
 MONGO_URI=your_mongodb_atlas_connection_string
 FRONTEND_URL=https://your-frontend.onrender.com
-EMAIL_TRANSPORT=smtp
 SMTP_HOST=your_smtp_host
 SMTP_PORT=465
 SMTP_SECURE=true

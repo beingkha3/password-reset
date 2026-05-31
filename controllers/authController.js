@@ -49,15 +49,13 @@ exports.forgotPassword = async (req, res, next) => {
 
     const resetUrl = `${frontendUrl}/reset-password/${token}`;
 
-    let previewUrl;
     try {
-      const result = await sendPasswordResetEmail({
+      await sendPasswordResetEmail({
         to: user.email,
         name: user.name,
         resetUrl,
         expiryMinutes: resetExpiryMinutes,
       });
-      previewUrl = result.previewUrl;
     } catch (err) {
       user.passwordResetTokenHash = undefined;
       user.passwordResetExpiresAt = undefined;
@@ -68,7 +66,6 @@ exports.forgotPassword = async (req, res, next) => {
     return res.json({
       success: true,
       message: 'Password reset link sent to your email.',
-      ...(previewUrl && { previewUrl }),
     });
   } catch (err) {
     next(err);

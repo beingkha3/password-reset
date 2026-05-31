@@ -10,6 +10,7 @@ const cors = require('cors');
 const connectDB = require('./config/db');
 const authRoutes = require('./routes/authRoutes');
 const errorHandler = require('./middleware/errorHandler');
+const { verifyEmailConfig } = require('./services/emailService');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -40,12 +41,13 @@ app.use('/api/auth', authRoutes);
 app.use(errorHandler);
 
 connectDB()
-  .then(() => {
+  .then(async () => {
+    await verifyEmailConfig();
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
     });
   })
   .catch((err) => {
-    console.error('Failed to connect to MongoDB:', err.message);
+    console.error('Failed to start server:', err.message);
     process.exit(1);
   });
