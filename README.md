@@ -119,6 +119,7 @@ password-reset/
 | POST | `/api/auth/forgot-password` | Send a reset link (rate limited to 5 requests per 15 min) |
 | GET | `/api/auth/reset-password/:token` | Check if a token is valid and not expired |
 | POST | `/api/auth/reset-password/:token` | Save the new password, delete the token |
+| GET | `/api/auth/test/latest-reset-token?email=...` | **Test only** — returns the raw token issued by the most recent `/forgot-password` so automated tests (Postman Runner, CI) don't need to open the email. Returns 404 unless the backend is started with `ENABLE_TEST_ENDPOINTS=true`. |
 | GET | `/api/health/smtp` | Check Brevo API connectivity (diagnostic) |
 
 ## Frontend Pages
@@ -175,6 +176,8 @@ The frontend runs on `http://localhost:5173`.
 4. Open the password reset email delivered to your inbox.
 5. Click the reset link and complete the password update.
 
+If you're running the Postman Collection / Newman in CI, set `ENABLE_TEST_ENDPOINTS=true` in the backend's environment so the runner can fetch the raw reset token from `GET /api/auth/test/latest-reset-token` without opening the email. Do not enable this in production.
+
 ---
 
 ## Testing with Postman
@@ -192,7 +195,7 @@ The workspace includes a **`password-reset (production)`** environment with `{{b
 3. **Register** — creates a test account (safe to re-run; returns 409 if already registered)
 4. **Forgot Password** — triggers the reset link email
 5. **Forgot Password - Unknown Email (404)** — confirms unregistered emails return 404 (optional)
-6. Copy the token from the reset email link into the collection variable `resetToken`
+6. For automated runs (Collection Runner / CI): **Get Latest Reset Token (dev only)** — reads the raw token from the test endpoint and sets `resetToken` automatically. Requires the backend to be running with `ENABLE_TEST_ENDPOINTS=true`. For manual runs: copy the token from the reset email link into the `resetToken` variable.
 7. **Verify Reset Token** — confirms the token is valid
 8. **Reset Password** — submits the new password; token is invalidated server-side
 9. **Reset Password - Reuse Token (400)** — confirms the same token cannot be used again
@@ -220,8 +223,10 @@ I tried to follow real-world security practices here, not just make it work:
 - Tokens expire after **15 minutes**.
 - After a successful reset, the token is **deleted immediately** so the same link cannot be used twice.
 - The forgot-password endpoint is **rate limited** to stop someone from flooding it.
+- The login endpoint is **rate limited** to slow down credential-stuffing / brute-force attacks.
 - Passwords are hashed with **bcryptjs at cost factor 12** before saving.
 - Express `trust proxy` is enabled so rate limiting works correctly behind Render's reverse proxy.
+- The `/api/auth/test/latest-reset-token` endpoint is **disabled by default** and only ever enabled with `ENABLE_TEST_ENDPOINTS=true`. **Never set this to `true` on a real production deployment** — it returns the raw reset token in an API response, which defeats the whole point of the email-delivery flow. Keep it on for local dev, a staging deploy used for the Postman Runner, or CI, and turn it off everywhere else.
 
 ---
 
@@ -247,6 +252,7 @@ JWT_EXPIRES_IN=1d
 BREVO_API_KEY=your_brevo_api_key
 SMTP_FROM=Password Reset <noreply@yourdomain.com>
 RESET_TOKEN_EXPIRY_MINUTES=15
+ENABLE_TEST_ENDPOINTS=false
 ```
 
 > Email is sent via the [Brevo](https://app.brevo.com) HTTP API (HTTPS port 443). Render blocks all outbound SMTP connections (ports 465 and 587), so nodemailer/SMTP does not work on Render. Get your API key from Brevo → Account → SMTP & API → API Keys tab. Verify your sending domain under Senders & IPs → Domains.

@@ -1,4 +1,4 @@
-const { body, validationResult } = require('express-validator');
+const { body, query, validationResult } = require('express-validator');
 
 const handleErrors = (req, res, next) => {
   const errors = validationResult(req);
@@ -56,4 +56,18 @@ const resetPasswordRules = [
     .withMessage('Passwords do not match'),
 ];
 
-module.exports = { handleErrors, forgotPasswordRules, loginRules, resetPasswordRules, registerRules };
+const testLatestResetTokenRules = [
+  query('email')
+    .trim()
+    .notEmpty().withMessage('email query parameter is required')
+    .isEmail().withMessage('Please provide a valid email'),
+];
+
+module.exports = {
+  handleErrors,
+  forgotPasswordRules,
+  loginRules,
+  resetPasswordRules,
+  registerRules,
+  testLatestResetTokenRules,
+};

@@ -7,8 +7,16 @@ const {
   register,
   login,
   getCurrentUser,
+  getLatestResetToken,
 } = require('../controllers/authController');
-const { handleErrors, forgotPasswordRules, loginRules, resetPasswordRules, registerRules } = require('../middleware/validate');
+const {
+  handleErrors,
+  forgotPasswordRules,
+  loginRules,
+  resetPasswordRules,
+  registerRules,
+  testLatestResetTokenRules,
+} = require('../middleware/validate');
 const { requireAuth } = require('../middleware/auth');
 
 const router = express.Router();
@@ -35,5 +43,6 @@ router.get('/me', requireAuth, getCurrentUser);
 router.post('/forgot-password', forgotPasswordLimiter, forgotPasswordRules, handleErrors, forgotPassword);
 router.get('/reset-password/:token', verifyResetToken);
 router.post('/reset-password/:token', resetPasswordRules, handleErrors, resetPassword);
+router.get('/test/latest-reset-token', testLatestResetTokenRules, handleErrors, getLatestResetToken);
 
 module.exports = router;

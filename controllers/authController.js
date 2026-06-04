@@ -9,6 +9,9 @@ const frontendUrl = (process.env.FRONTEND_URL || process.env.CLIENT_ORIGIN || 'h
   ''
 );
 
+const testEndpointsEnabled = () => process.env.ENABLE_TEST_ENDPOINTS === 'true';
+const latestResetTokens = new Map();
+
 const getResetUser = async (token) => {
   const tokenHash = hashResetToken(token);
 
@@ -108,6 +111,10 @@ exports.forgotPassword = async (req, res, next) => {
     user.passwordResetExpiresAt = expiresAt;
     await user.save({ validateBeforeSave: false });
 
+    if (testEndpointsEnabled()) {
+      latestResetTokens.set(email, { token, expiresAt });
+    }
+
     const resetUrl = `${frontendUrl}/reset-password/${token}`;
 
     try {
@@ -183,6 +190,48 @@ exports.resetPassword = async (req, res, next) => {
     return res.json({
       success: true,
       message: 'Password reset successfully. Redirecting to login.',
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.getLatestResetToken = async (req, res, next) => {
+  try {
+    if (!testEndpointsEnabled()) {
+      return res.status(404).json({
+        success: false,
+        message: 'Not found',
+      });
+    }
+
+    const email = String(req.query.email || '').trim().toLowerCase();
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: 'email query parameter is required',
+      });
+    }
+
+    const entry = latestResetTokens.get(email);
+    if (!entry) {
+      return res.status(404).json({
+        success: false,
+        message: 'No active reset token for this email. Run Forgot Password first.',
+      });
+    }
+
+    if (entry.expiresAt.getTime() < Date.now()) {
+      latestResetTokens.delete(email);
+      return res.status(410).json({
+        success: false,
+        message: 'Latest reset token has expired. Request a new one.',
+      });
+    }
+
+    return res.json({
+      success: true,
+      data: { token: entry.token, expiresAt: entry.expiresAt.toISOString() },
     });
   } catch (err) {
     next(err);
