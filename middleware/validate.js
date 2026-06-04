@@ -19,6 +19,15 @@ const forgotPasswordRules = [
     .isEmail().withMessage('Please provide a valid email'),
 ];
 
+const loginRules = [
+  body('email')
+    .trim()
+    .notEmpty().withMessage('Email is required')
+    .isEmail().withMessage('Please provide a valid email'),
+  body('password')
+    .notEmpty().withMessage('Password is required'),
+];
+
 const registerRules = [
   body('name')
     .trim()
@@ -47,4 +56,4 @@ const resetPasswordRules = [
     .withMessage('Passwords do not match'),
 ];
 
-module.exports = { handleErrors, forgotPasswordRules, resetPasswordRules, registerRules };
+module.exports = { handleErrors, forgotPasswordRules, loginRules, resetPasswordRules, registerRules };

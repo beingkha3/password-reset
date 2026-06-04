@@ -43,6 +43,7 @@ The full flow works like this:
 - Node.js + Express
 - MongoDB Atlas + Mongoose
 - bcryptjs (password hashing)
+- jsonwebtoken (signed bearer tokens for /me and any future protected routes)
 - Brevo HTTP API (transactional email)
 - express-validator (input validation)
 - express-rate-limit (brute-force protection)
@@ -70,14 +71,16 @@ password-reset/
 ├── models/
 │   └── User.js                 # User schema with bcrypt password hashing
 ├── controllers/
-│   └── authController.js       # All the auth logic
+│   └── authController.js       # All the auth logic (register, login, me, reset flow)
 ├── routes/
 │   └── authRoutes.js           # API routes with rate limiting
 ├── services/
 │   └── emailService.js         # Brevo HTTP API email delivery
 ├── utils/
-│   └── resetToken.js           # Token generation and SHA-256 hashing
+│   ├── resetToken.js           # Password-reset token generation and SHA-256 hashing
+│   └── jwt.js                  # JWT signing and verification
 ├── middleware/
+│   ├── auth.js                 # requireAuth: validates Bearer token on protected routes
 │   ├── errorHandler.js         # Global error handler
 │   └── validate.js             # express-validator rules
 ├── password-reset.postman_collection.json   # Ready-to-import Postman collection
@@ -90,7 +93,9 @@ password-reset/
         ├── main.jsx
         ├── index.css
         ├── api/
-        │   └── passwordResetApi.js   # All fetch calls to the backend
+        │   └── passwordResetApi.js   # All fetch calls to the backend (attaches Bearer token when present)
+        ├── utils/
+        │   └── auth.js               # localStorage token/user helpers
         ├── components/
         │   ├── AuthFrame.jsx         # Shared page layout
         │   ├── SiteNavbar.jsx
@@ -98,7 +103,8 @@ password-reset/
         └── pages/
             ├── ForgotPasswordPage.jsx
             ├── ResetPasswordPage.jsx
-            └── LoginPage.jsx
+            ├── LoginPage.jsx         # Sign-in form + signed-in state
+            └── RegisterPage.jsx
 ```
 
 ---
@@ -108,12 +114,12 @@ password-reset/
 | Method | Endpoint | What it does |
 |--------|----------|--------------|
 | POST | `/api/auth/register` | Create a new user |
+| POST | `/api/auth/login` | Sign in, returns a JWT (rate limited to 10 requests per 15 min) |
+| GET | `/api/auth/me` | Return the current user (requires `Authorization: Bearer <token>`) |
 | POST | `/api/auth/forgot-password` | Send a reset link (rate limited to 5 requests per 15 min) |
 | GET | `/api/auth/reset-password/:token` | Check if a token is valid and not expired |
 | POST | `/api/auth/reset-password/:token` | Save the new password, delete the token |
 | GET | `/api/health/smtp` | Check Brevo API connectivity (diagnostic) |
-
----
 
 ## Frontend Pages
 
@@ -121,7 +127,7 @@ password-reset/
 |-----|---------------|
 | `/forgot-password` | Email input form |
 | `/reset-password/:token` | Checks token, then shows new password form |
-| `/login` | Confirmation screen after a successful reset |
+| `/login` | Sign-in form; restores session from stored JWT; shows a signed-in state with a sign-out button once authenticated |
 
 ---
 
@@ -236,6 +242,8 @@ Environment variables to set in the Render dashboard:
 ```
 MONGO_URI=your_mongodb_atlas_connection_string
 CLIENT_ORIGIN=https://your-frontend.onrender.com
+JWT_SECRET=your_long_random_jwt_secret
+JWT_EXPIRES_IN=1d
 BREVO_API_KEY=your_brevo_api_key
 SMTP_FROM=Password Reset <noreply@yourdomain.com>
 RESET_TOKEN_EXPIRY_MINUTES=15

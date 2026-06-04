@@ -1,5 +1,6 @@
 const { createPasswordResetToken, hashResetToken } = require('../utils/resetToken');
 const { sendPasswordResetEmail } = require('../services/emailService');
+const { signAuthToken } = require('../utils/jwt');
 const User = require('../models/User');
 
 const resetExpiryMinutes = Number(process.env.RESET_TOKEN_EXPIRY_MINUTES || 15);
@@ -16,6 +17,18 @@ const getResetUser = async (token) => {
   );
 };
 
+const buildAuthResponse = (user) => {
+  const token = signAuthToken({ sub: user._id.toString(), email: user.email });
+  return {
+    success: true,
+    message: 'Signed in successfully.',
+    data: {
+      token,
+      user: { id: user._id, name: user.name, email: user.email },
+    },
+  };
+};
+
 exports.register = async (req, res, next) => {
   try {
     const { name, email, password } = req.body;
@@ -24,6 +37,54 @@ exports.register = async (req, res, next) => {
       success: true,
       message: 'Account created successfully.',
       data: { id: user._id, name: user.name, email: user.email },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.login = async (req, res, next) => {
+  try {
+    const email = req.body.email.trim().toLowerCase();
+    const { password } = req.body;
+
+    const user = await User.findOne({ email }).select('+password');
+
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid email or password.',
+      });
+    }
+
+    const passwordMatches = await user.comparePassword(password);
+    if (!passwordMatches) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid email or password.',
+      });
+    }
+
+    return res.json(buildAuthResponse(user));
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.getCurrentUser = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user.id);
+
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Account no longer exists. Please sign in again.',
+      });
+    }
+
+    return res.json({
+      success: true,
+      data: { user: { id: user._id, name: user.name, email: user.email } },
     });
   } catch (err) {
     next(err);

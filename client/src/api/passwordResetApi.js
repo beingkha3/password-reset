@@ -1,16 +1,30 @@
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 const REQUEST_TIMEOUT_MS = 20000;
 
+const getAuthToken = () => {
+  try {
+    return window.localStorage.getItem('pr_auth_token');
+  } catch {
+    return null;
+  }
+};
+
+const buildHeaders = (extra) => {
+  const token = getAuthToken();
+  return {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(extra || {}),
+  };
+};
+
 const requestJson = async (path, options = {}) => {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
   try {
     const response = await fetch(`${API_BASE_URL}${path}`, {
-      headers: {
-        'Content-Type': 'application/json',
-        ...(options.headers || {}),
-      },
+      headers: buildHeaders(options.headers),
       ...options,
       signal: controller.signal,
     });
@@ -39,6 +53,14 @@ const requestJson = async (path, options = {}) => {
 
 export const registerUser = (name, email, password) =>
   requestJson('/auth/register', { method: 'POST', body: JSON.stringify({ name, email, password }) });
+
+export const loginUser = (email, password) =>
+  requestJson('/auth/login', {
+    method: 'POST',
+    body: JSON.stringify({ email, password }),
+  });
+
+export const getCurrentUser = () => requestJson('/auth/me');
 
 export const requestForgotPassword = (email) =>
   requestJson('/auth/forgot-password', {

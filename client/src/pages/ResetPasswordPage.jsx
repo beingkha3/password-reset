@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { requestPasswordReset, verifyResetToken } from '../api/passwordResetApi';
 import AuthFrame from '../components/AuthFrame';
 import StatusAlert from '../components/StatusAlert';
@@ -16,6 +16,7 @@ const isStrongPassword = (password) => getPasswordChecks(password).every((check)
 
 export default function ResetPasswordPage() {
   const { token } = useParams();
+  const navigate = useNavigate();
   const [tokenState, setTokenState] = useState('loading');
   const [tokenMessage, setTokenMessage] = useState('');
   const [password, setPassword] = useState('');
@@ -201,9 +202,13 @@ export default function ResetPasswordPage() {
           <h2>Password updated successfully</h2>
           <p>You can now sign in with your new password.</p>
           <div className="action-stack">
-            <Link to="/login" className="btn btn-dark w-100">
+            <button
+              type="button"
+              className="btn btn-dark w-100"
+              onClick={() => navigate('/login', { state: { resetSuccess: true } })}
+            >
               Go to Sign In
-            </Link>
+            </button>
           </div>
         </section>
       </AuthFrame>

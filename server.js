@@ -29,6 +29,9 @@ app.get('/', (req, res) => {
     success: true,
     message: 'Password Reset API is running',
     endpoints: {
+      register: { method: 'POST', url: '/api/auth/register' },
+      login: { method: 'POST', url: '/api/auth/login' },
+      me: { method: 'GET', url: '/api/auth/me' },
       forgotPassword: { method: 'POST', url: '/api/auth/forgot-password' },
       verifyResetLink: { method: 'GET', url: '/api/auth/reset-password/:token' },
       resetPassword: { method: 'POST', url: '/api/auth/reset-password/:token' },
